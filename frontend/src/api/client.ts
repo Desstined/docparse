@@ -70,24 +70,29 @@ export interface Document {
   id: string;
   filename: string;
   upload_date: string;
-  status: 'pending' | 'processing' | 'completed' | 'error';
+  status: 'pending' | 'processing' | 'completed' | 'error' | 'failed';
   error_message?: string;
+}
+
+export interface SearchResult {
+  document_id: string;
+  filename: string;
+  content: string;
+  similarity_score: number;
+  upload_date: string;
+  status: string;
+  matching_text?: string;
+}
+
+export interface SearchResponse {
+  results: SearchResult[];
+  total_results: number;
 }
 
 export interface SearchQuery {
   query: string;
   similarity_threshold?: number;
-  include_metadata?: boolean;
-}
-
-export interface SearchResponse {
-  id: string;
-  document: Document;
-  chunk: {
-    text: string;
-    page_number: number;
-  };
-  similarity: number;
+  include_processing?: boolean;
 }
 
 export interface CollectionStats {
@@ -149,7 +154,7 @@ export const documents = {
     return response.data;
   },
 
-  search: async (query: SearchQuery): Promise<SearchResponse[]> => {
+  search: async (query: SearchQuery): Promise<SearchResponse> => {
     const response = await api.post('/documents/search', query);
     return response.data;
   },

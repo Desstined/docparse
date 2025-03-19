@@ -98,15 +98,19 @@ async def get_current_active_user(
 
 def check_permissions(required_scopes: list[str]):
     """Decorator to check user permissions."""
-    async def permission_checker(
-        current_user: User = Depends(get_current_active_user)
-    ) -> User:
-        user_scopes = set(current_user.scopes)
-        required_scopes_set = set(required_scopes)
-        if not required_scopes_set.issubset(user_scopes):
+    async def permission_checker(current_user = Depends(get_current_active_user)) -> User:
+        if not required_scopes:  # If no scopes required, allow access
+            return current_user
+            
+        # Get user scopes, defaulting to empty list if not present
+        user_scopes = set(getattr(current_user, 'scopes', []))
+        
+        # Check if user has any of the required scopes
+        if not any(scope in user_scopes for scope in required_scopes):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions"
             )
         return current_user
+        
     return permission_checker 

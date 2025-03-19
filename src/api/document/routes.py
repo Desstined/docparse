@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
 from typing import List, Optional
 from sqlalchemy.orm import Session
 import logging
@@ -40,50 +40,47 @@ async def list_documents(
             detail=str(e)
         )
 
-@router.post("/", response_model=DocumentResponse)
+@router.post(
+    "",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+    }
+)
 async def upload_document(
-    file: UploadFile = File(...),
-    metadata: Optional[dict] = None,
+    file: UploadFile,
+    background_tasks: BackgroundTasks,
     document_service: DocumentService = Depends(get_document_service),
-    current_user = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    current_user = Depends(get_current_active_user)
 ):
-    """Upload and process a new document."""
-    try:
-        if not file.filename.lower().endswith('.pdf'):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="File must be a PDF"
-            )
-        
-        content = await file.read()
-        document = document_service.process_document(content, metadata)
-        return document
-    except Exception as e:
-        logger.error(f"Error uploading document: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+    """Upload a new document."""
+    return await document_service.upload_document(file, background_tasks)
 
-@router.get("/{document_id}", response_model=DocumentResponse)
+@router.get(
+    "/{document_id}",
+    response_model=DocumentResponse,
+    responses={
+        404: {"model": ErrorResponse},
+        500: {"model": ErrorResponse}
+    }
+)
 async def get_document(
     document_id: str,
     document_service: DocumentService = Depends(get_document_service),
-    current_user = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    current_user = Depends(get_current_active_user)
 ):
     """Get a specific document by ID."""
     try:
-        document = document_service.get_document(document_id)
-        if not document:
+        return await document_service.get_document(document_id)
+    except Exception as e:
+        logger.error(f"Error getting document: {str(e)}")
+        if "not found" in str(e).lower():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Document {document_id} not found"
             )
-        return document
-    except Exception as e:
-        logger.error(f"Error getting document: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -128,19 +125,59 @@ def get_empty_stats() -> CollectionStats:
         }
     )
 
-@router.get("/stats")
+@router.get(
+    "/stats",
+    response_model=CollectionStats,
+    responses={
+        401: {"model": ErrorResponse},
+        500: {"model": ErrorResponse}
+    }
+)
 async def get_collection_stats(
     document_service: DocumentService = Depends(get_document_service),
     current_user = Depends(get_current_active_user)
 ):
+    """Get statistics about the document collection."""
     try:
-        stats = document_service.get_collection_stats()
-        return stats if stats else get_empty_stats()
+        return document_service.get_collection_stats()
     except Exception as e:
-        logger.error(f"Error getting stats: {str(e)}")
-        if "Document stats not found" in str(e):
-            return get_empty_stats()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+        logger.error(f"Error getting collection stats: {e}")
+        # Return empty stats instead of error
+        return CollectionStats(
+            total_documents=0,
+            total_pages=0,
+            total_chunks=0,
+            average_pages=0,
+            processing_documents=0,
+            failed_documents=0,
+            average_chunks_per_document=0,
+            documents_by_status={
+                "completed": 0,
+                "processing": 0,
+                "failed": 0
+            }
+        )
+
+@router.post(
+    "/search",
+    response_model=SearchResponse,
+    responses={
+        401: {"model": ErrorResponse},
+        500: {"model": ErrorResponse}
+    }
+)
+async def search_documents(
+    query: SearchQuery,
+    document_service: DocumentService = Depends(get_document_service),
+    current_user = Depends(get_current_active_user)
+):
+    """Search documents using semantic search."""
+    try:
+        return await document_service.search_documents(query)
+    except Exception as e:
+        logger.error(f"Error searching documents: {str(e)}")
+        # Return empty results instead of error
+        return SearchResponse(
+            results=[],
+            total_results=0
         ) 

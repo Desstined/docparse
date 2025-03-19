@@ -33,9 +33,9 @@ export const Dashboard: React.FC = () => {
       try {
         await getCollectionStats();
         setError(null);
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error fetching stats:', err);
-        setError('Failed to load dashboard data. Please try again later.');
+        setError('Failed to load dashboard data');
       } finally {
         setIsLoading(false);
       }

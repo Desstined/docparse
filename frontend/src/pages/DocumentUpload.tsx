@@ -47,6 +47,19 @@ export const DocumentUpload: React.FC = () => {
     multiple: true,
   });
 
+  const renderStatus = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircleIcon color="success" />;
+      case 'processing':
+        return <CircularProgress size={24} />;
+      case 'failed':
+        return <ErrorIcon color="error" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ flexGrow: 1 }}>
@@ -102,37 +115,28 @@ export const DocumentUpload: React.FC = () => {
             Uploaded Documents
           </Typography>
           <List>
-            {documents.map((doc, index) => (
-              <React.Fragment key={doc.id}>
-                <ListItem
-                  secondaryAction={
-                    <IconButton
-                      edge="end"
+            {documents.map((doc) => (
+              <ListItem
+                key={doc.id}
+                secondaryAction={
+                  <>
+                    {renderStatus(doc.status)}
+                    <IconButton 
+                      edge="end" 
                       aria-label="delete"
                       onClick={() => deleteDocument(doc.id)}
+                      disabled={doc.status === 'processing'}
                     >
                       <DeleteIcon />
                     </IconButton>
-                  }
-                >
-                  <ListItemIcon>
-                    {doc.status === 'completed' ? (
-                      <CheckCircleIcon color="success" />
-                    ) : doc.status === 'error' ? (
-                      <ErrorIcon color="error" />
-                    ) : (
-                      <CircularProgress size={24} />
-                    )}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={doc.filename}
-                    secondary={`Uploaded: ${new Date(
-                      doc.upload_date
-                    ).toLocaleDateString()}`}
-                  />
-                </ListItem>
-                {index < documents.length - 1 && <Divider />}
-              </React.Fragment>
+                  </>
+                }
+              >
+                <ListItemText
+                  primary={doc.filename}
+                  secondary={`Uploaded: ${new Date(doc.upload_date).toLocaleString()}`}
+                />
+              </ListItem>
             ))}
           </List>
         </Paper>

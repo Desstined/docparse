@@ -21,30 +21,28 @@ class DocumentResponse(BaseModel):
     """Model for document response."""
     id: str
     filename: str
-    chunks: List[DocumentChunk]
-    metadata: Optional[DocumentMetadata] = None
-    created_at: datetime
-    updated_at: datetime
+    upload_date: str
+    status: str
 
 class SearchQuery(BaseModel):
     """Model for search query."""
     query: str
-    n_results: int = Field(default=10, gt=0, le=100)
-    where: Optional[Dict[str, Any]] = None
-    where_document: Optional[Dict[str, Any]] = None
+    similarity_threshold: float = 0.0
+    include_processing: bool = False
 
 class SearchResult(BaseModel):
     """Model for search result."""
     document_id: str
-    chunk_id: str
-    text: str
-    metadata: Optional[DocumentMetadata] = None
-    score: float
+    filename: str
+    content: str
+    similarity_score: float
+    upload_date: str
+    status: str
+    matching_text: str | None = None
 
 class SearchResponse(BaseModel):
     """Model for search response."""
-    results: List[SearchResult]
-    query: str
+    results: list[SearchResult]
     total_results: int
 
 class CollectionStats(BaseModel):
@@ -60,4 +58,12 @@ class CollectionStats(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Model for error response."""
-    detail: str 
+    detail: str
+
+class User(BaseModel):
+    id: int
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool = False
+    scopes: list[str] = [] 
